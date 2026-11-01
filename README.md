@@ -2,7 +2,7 @@
 
 多模态大模型经典算法的 PyTorch 实现：**CLIP、ALBEF、BLIP、BLIP-2、Flamingo、LLaVA、Llama 3.2-Vision**。
 
-这个项目的目标是**好读**，适合学习和面试准备：只依赖 PyTorch，每个算法一个包，结构保留论文的核心设计，次要的工程细节都做了简化，并在注释里说明。
+每类算法只依赖 PyTorch，每个算法一个包，结构保留论文的核心设计，次要的工程细节都做了简化，并在注释里说明。
 
 ## 目录结构
 
@@ -88,7 +88,7 @@ model.set_train_stage(2)  # 指令微调: 训练 projector + LLM
 
 `common.CausalLM` 的接口（`get_input_embeddings`、`inputs_embeds`、`labels`、`generate`）和 HuggingFace 保持一致，BLIP-2 Stage 2 和 LLaVA 可以直接换成真实的 LLM。Flamingo 要改 LM 内部的层，所以依赖 `CausalLM` 的 `layers` 结构。
 
-## 相对原论文的简化
+## 简化部分
 
 - 所有 Transformer 统一用 Pre-Norm；Q-Former 保留 BERT 的 Post-Norm。
 - 没有实现分布式训练里的 `all_gather`（CLIP / BLIP / BLIP-2 用它跨卡收集负样本）。
