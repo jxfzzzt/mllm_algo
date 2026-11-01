@@ -1,0 +1,5 @@
+# Runtime
+torch>=2.0
+
+# Dev / testing
+pytest
