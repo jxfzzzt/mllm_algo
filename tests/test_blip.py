@@ -3,7 +3,7 @@ import torch
 from conftest import VOCAB_SIZE, has_grad, tiny_vit
 from mllm_algo.blip import MED, BLIPPretrain
 
-ENC_TOKEN_ID, DEC_TOKEN_ID = 1, 2
+ENC_TOKEN_ID, DEC_TOKEN_ID, CLS_TOKEN_ID = 1, 2, 3
 
 
 def build_blip() -> BLIPPretrain:
@@ -11,9 +11,17 @@ def build_blip() -> BLIPPretrain:
     return BLIPPretrain(tiny_vit(), med, ENC_TOKEN_ID, DEC_TOKEN_ID, embed_dim=16, queue_size=8)
 
 
+def with_cls(text):
+    """BLIPPretrain 约定 input_ids 第 0 个 token 是 [CLS] (ITM / LM 会把它替换成 [ENC] / [DEC])。"""
+    input_ids, attention_mask = text
+    input_ids = input_ids.clone()
+    input_ids[:, 0] = CLS_TOKEN_ID
+    return input_ids, attention_mask
+
+
 def test_forward_backward(images, text):
     model = build_blip()
-    out = model(images, *text)
+    out = model(images, *with_cls(text))
     for loss in (out.loss_itc, out.loss_itm, out.loss_lm):
         assert torch.isfinite(loss)
     out.loss.backward()
@@ -24,7 +32,7 @@ def test_forward_backward(images, text):
 def test_queue_is_updated(images, text):
     model = build_blip()
     queue_before = model.image_queue.clone()
-    model(images, *text)
+    model(images, *with_cls(text))
     assert int(model.queue_ptr) == 4
     assert not torch.equal(model.image_queue[:, :4], queue_before[:, :4])
     assert torch.equal(model.image_queue[:, 4:], queue_before[:, 4:])
