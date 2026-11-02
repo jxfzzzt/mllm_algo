@@ -48,3 +48,18 @@ def test_generate_caption(images):
     model = build_blip()
     caption = model.generate_caption(images, max_new_tokens=5)
     assert caption.shape == (4, 5)
+
+
+def test_generate_caption_pads_after_eos(images):
+    model = build_blip()
+    reference = model.generate_caption(images, max_new_tokens=5)
+    eos = int(reference[0, 1])  # 让第 0 条样本最晚在第 2 步结束
+    caption = model.generate_caption(images, max_new_tokens=5, eos_token_id=eos, pad_token_id=0)
+    for row, ref in zip(caption, reference):
+        hits = (row == eos).nonzero()
+        if len(hits) == 0:
+            assert torch.equal(row, ref[:len(row)])
+            continue
+        end = int(hits[0]) + 1
+        assert torch.equal(row[:end], ref[:end])  # EOS 及之前与不设 EOS 时一致
+        assert (row[end:] == 0).all()  # EOS 之后全是 pad

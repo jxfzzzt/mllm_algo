@@ -161,13 +161,19 @@ class BLIPPretrain(nn.Module):
     # ------------------------------------------------------------------
     @torch.no_grad()
     def generate_caption(self, images: torch.Tensor, max_new_tokens: int = 20,
-                         eos_token_id: Optional[int] = None) -> torch.Tensor:
+                         eos_token_id: Optional[int] = None, pad_token_id: int = 0) -> torch.Tensor:
+        """返回 [B, T] 的新生成 token。某条样本生成 EOS 后, 它后面的位置都填 pad_token_id。"""
         image_embeds = self.visual(images)
-        ids = torch.full((images.shape[0], 1), self.dec_token_id, dtype=torch.long, device=images.device)
+        B = images.shape[0]
+        ids = torch.full((B, 1), self.dec_token_id, dtype=torch.long, device=images.device)
+        finished = torch.zeros(B, dtype=torch.bool, device=images.device)
         for _ in range(max_new_tokens):
             hidden = self.text(ids, torch.ones_like(ids), mode="decoder", image_embeds=image_embeds)
-            next_token = self.text.lm_head(hidden[:, -1]).argmax(dim=-1, keepdim=True)
-            ids = torch.cat([ids, next_token], dim=1)
-            if eos_token_id is not None and (ids == eos_token_id).any(dim=1).all():
-                break
+            next_token = self.text.lm_head(hidden[:, -1]).argmax(dim=-1)  # [B]
+            next_token = next_token.masked_fill(finished, pad_token_id)  # 已结束的样本只补 pad
+            ids = torch.cat([ids, next_token[:, None]], dim=1)
+            if eos_token_id is not None:
+                finished |= next_token == eos_token_id
+                if finished.all():
+                    break
         return ids[:, 1:]
