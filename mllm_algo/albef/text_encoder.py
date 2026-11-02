@@ -22,8 +22,11 @@ class ALBEFTextEncoder(nn.Module):
         self.pos_embed = nn.Embedding(max_len, dim)
         self.embed_norm = nn.LayerNorm(dim)
 
+        # text layers 是 self-attention
         self.text_layers = nn.ModuleList([TransformerBlock(dim, num_heads) for _ in range(num_text_layers)])
         self.text_norm = nn.LayerNorm(dim)
+
+        # fusion layers 是 cross-attention
         self.fusion_layers = nn.ModuleList([
             TransformerBlock(dim, num_heads, context_dim=image_dim) for _ in range(num_fusion_layers)
         ])
